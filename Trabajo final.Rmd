@@ -1,0 +1,126 @@
+---
+title: "Stringency index y muertes por COVID en Sudamerica"
+subtitle: "Introducción a Ciencia de Datos en Salud - Agustín Nava - 2020"
+output: 
+  html_document: 
+    fig_height: 8
+    fig_width: 12
+    number_sections: yes
+    theme: paper
+    toc: yes
+    toc_float:
+      toc_collapsed: yes
+editor_options: 
+  chunk_output_type: console
+---
+```{r options, echo = FALSE}
+
+knitr::opts_chunk$set(warning = FALSE,
+                      error = FALSE,
+                      message = FALSE)
+
+``` 
+ 
+
+# Introducción
+
+Al día de la fecha, hay más de 14 millones de infectados por el virus COVID-19. En marzo de este año la OMS reconoció como pandemia la enfermedad producida por este último, llevando a todos los estados a tomar medidas para disminuir la tasa de contagio. Sin embargo, estas medidas no fueron las mismas en todos los países ni tuvieron el mismo grado de "severidad". 
+
+La Universidad de Oxford generó un parámetro numérico que trata de traducir las medidas gubernamentales a un índice numérico, basándose en indicadores particulares de medidas (cierre de escuelas, espacios de trabajo, cancelación de eventos públicos, restricción de reuniones, cierre de transporte público, entre otras), denominado __"Stringency Index"__.
+
+En este trabajo me propongo analizar la relación entre este índice y la cantidad de muertos por millón en los países de Sudamérica para los que hay datos. _Este trabajo está realizado solo a modo de ejercicio, puesto que la veracidad de las conclusiones finales es despreciable._
+
+
+# Cargo las librerías
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(gapminder)
+library(knitr) 
+library(readxl)
+library(writexl)
+library(readr)
+
+```
+
+# Cargo el .csv
+
+Esta base es diariamente renovada por la Universidad de Oxford, y contiene un registro diario de los infectados/muertos en cada país, además de otros importantes datos demográficos. Se encuentra en: https://ourworldindata.org/coronavirus
+
+```{r}
+COVID <- read_csv("C:/Users/Agu/Downloads/owid-covid-data.csv")
+```
+
+# Limpieza y selección de datos
+
+## Stringency index
+
+El stringency index es un valor que fue variando con el correr de la pandemia. Entonces, voy a buscar el valor máximo que haya alcanzado en cada país. Como este último se repitió varios días, voy a buscar el registro que tenga la fecha más "actualizada". 
+
+```{r}
+COVID_SI <- COVID %>%
+            group_by(location) %>%
+            top_n(1, stringency_index) %>%
+            filter(date == max(date)) %>%
+            ungroup()
+
+```
+
+## Selecciono los paises de Sudamerica
+
+```{r}
+COVID_SUD <- COVID_SI %>%
+            filter(continent == "South America")
+```
+
+Para empezar a explorar la relación entre los datos, hago un grafico.
+
+```{r}
+ggplot(data = COVID_SUD, aes(x= stringency_index , y= total_deaths_per_million)) + geom_label(aes(label = iso_code)) +
+  labs(title = 'Correlación entre S. index y cantidad de muertes en Sudamérica') +
+  xlab("Stringency index") + 
+  ylab("Muertes por millón de habitantes")
+```
+
+Parecería que los países "outliers" son los que menos habitantes tienen.
+
+## Me quedo con los paises que tienen más de 5.000.000 de habitantes
+
+```{r}
+COVID_SUD_5 <- COVID_SUD %>%
+              filter(population > 5000000)
+```
+```{r}
+ggplot(data = COVID_SUD_5, aes(x= stringency_index , y= total_deaths_per_million)) + geom_label(aes(label = iso_code)) +
+  labs(title = 'Correlación entre S. index y cantidad de muertes en Sudamérica') +
+  xlab("Stringency index") + 
+  ylab("Muertes por millón de habitantes")
+```
+
+
+# Correlación y analisis de P
+
+## Mido la correlación entre las variables
+
+```{r}
+cor(COVID_SUD_5$stringency_index,
+    COVID_SUD_5$total_deaths_per_million)
+``` 
+
+
+Parecería que hay una correlación inversa _"aceptable"_.
+
+
+## Calculando el valor de P
+
+```{r}
+
+regresion_lineal <-  lm(total_deaths_per_million ~ stringency_index,
+               COVID_SUD_5)
+summary(regresion_lineal)
+
+```
+
+
+__Con un valor de p de 0.0154, con más del 95% de confianza que el Stringency Index tendría implicancias en el total de muertes por millón.__
