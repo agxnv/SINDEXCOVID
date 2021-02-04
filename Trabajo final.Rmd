@@ -124,3 +124,5 @@ summary(regresion_lineal)
 
 
 __Con un valor de p de 0.0154, con más del 95% de confianza que el Stringency Index tendría implicancias en el total de muertes por millón.__
+
+Testeando commit
